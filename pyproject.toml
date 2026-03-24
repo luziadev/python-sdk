@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "luziadev"
+version = "1.0.0"
+description = "Official Python SDK for the Luzia cryptocurrency pricing API"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Luzia", email = "support@luzia.dev" }]
+keywords = ["luzia", "cryptocurrency", "api", "sdk", "crypto", "trading", "binance", "coinbase"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.27.0,<1.0",
+]
+
+[project.optional-dependencies]
+websocket = ["websockets>=12.0,<15.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "respx>=0.22",
+    "websockets>=12.0,<15.0",
+]
+
+[project.urls]
+Homepage = "https://luzia.dev"
+Documentation = "https://luzia.dev/docs/sdk"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/luziadev"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
