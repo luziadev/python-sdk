@@ -1,0 +1,100 @@
+name: Publish Luzia Python SDK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Set package version
+        run: sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/" pyproject.toml
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [publish-pypi]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            ```bash
+            # Using pip
+            pip install luziadev
+
+            # Using uv
+            uv add luziadev
+
+            # With WebSocket support
+            pip install luziadev[websocket]
+            ```
+
+            ## Quick Start
+
+            ```python
+            from luziadev import Luzia
+
+            luzia = Luzia(api_key="lz_your_api_key")
+
+            # Get BTC price from Binance
+            ticker = luzia.tickers.get("binance", "BTC/USDT")
+            print(f"BTC/USDT: ${ticker.last}")
+
+            # List all exchanges
+            exchanges = luzia.exchanges.list()
+            ```
+
+            ## Documentation
+
+            - [PyPI package](https://pypi.org/project/luziadev/)
+            - [README](https://github.com/${{ github.repository }}#readme)
+            - [API Documentation](https://luzia.dev/docs)
