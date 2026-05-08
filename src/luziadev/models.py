@@ -67,6 +67,10 @@ class Market:
     quote: str = ""
     quote_id: str = ""
     active: bool = True
+    # Market classification: "spot" | "futures" | "margin" | "stock".
+    # "stock" indicates a tokenized equity (e.g. Kraken xStocks like AAPLx/USD).
+    # `None` is treated as "spot" for back-compat.
+    type: Optional[str] = None
     precision: Optional[dict] = None
     limits: Optional[dict] = None
 
@@ -80,6 +84,7 @@ class Market:
             quote=data.get("quote", ""),
             quote_id=data.get("quoteId", ""),
             active=data.get("active", True),
+            type=data.get("type"),
             precision=data.get("precision"),
             limits=data.get("limits"),
         )

@@ -157,6 +157,44 @@ async def test_markets_list():
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_markets_list_xstocks():
+    """xStock markets carry type='stock' and the type filter is passed through."""
+    route = respx.get("https://api.luzia.dev/v1/markets/kraken").mock(
+        return_value=httpx.Response(200, json={
+            "markets": [{
+                "symbol": "AAPLx/USD",
+                "exchange": "kraken",
+                "base": "AAPLx",
+                "quote": "USD",
+                "baseId": "AAPLx",
+                "quoteId": "ZUSD",
+                "active": True,
+                "type": "stock",
+                "precision": {"amount": 8, "price": 2},
+                "limits": {"amount": {"min": 0.0001, "max": 0}, "price": {"min": 0, "max": 0}},
+            }],
+            "total": 1,
+            "limit": 100,
+            "offset": 0,
+        })
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        result = await client.markets.list("kraken", type="stock", base="AAPLx")
+
+    assert len(result.markets) == 1
+    market = result.markets[0]
+    assert market.symbol == "AAPLx/USD"
+    assert market.base == "AAPLx"
+    assert market.type == "stock"
+    # Mixed-case base must NOT be uppercased — Kraken stores "AAPLx", not "AAPLX".
+    request_url = str(route.calls[0].request.url)
+    assert "base=AAPLx" in request_url
+    assert "type=stock" in request_url
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_history_get():
     respx.get("https://api.luzia.dev/v1/history/binance/BTC-USDT").mock(
         return_value=httpx.Response(200, json={
