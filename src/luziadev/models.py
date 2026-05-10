@@ -72,20 +72,105 @@ class Ticker:
 
 @dataclass(frozen=True)
 class Token:
-    """On-chain token referenced by a DEX market."""
+    """Canonical asset or on-chain token.
 
-    address: str = ""
+    Chain-bound rows have ``chain_id`` and ``address`` set; chainless canonical
+    rows (id ``crypto:SYMBOL``) have both ``None``.
+    """
+
+    # Composite id ("crypto:USDC", "ethereum:WETH"). Always present from the
+    # /v1/tokens endpoint; may be empty when constructed from legacy nested
+    # baseToken/quoteToken payloads on DEX markets.
+    id: str = ""
     symbol: str = ""
+    name: str = ""
     decimals: int = 0
-    chain_id: str = ""
+    address: Optional[str] = None
+    chain_id: Optional[str] = None
+    total_supply: Optional[str] = None
+    logo_url: Optional[str] = None
+    tags: tuple[str, ...] = ()
+    # For on-chain rows, the chainless ``crypto:SYMBOL`` row this token mirrors.
+    canonical_id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> Token:
+        tags_raw = data.get("tags") or []
         return cls(
-            address=data.get("address", ""),
+            id=data.get("id", ""),
             symbol=data.get("symbol", ""),
+            name=data.get("name", ""),
             decimals=int(data.get("decimals", 0)),
-            chain_id=data.get("chainId", ""),
+            address=data.get("address"),
+            chain_id=data.get("chainId"),
+            total_supply=data.get("totalSupply"),
+            logo_url=data.get("logoUrl"),
+            tags=tuple(tags_raw),
+            canonical_id=data.get("canonicalId"),
+        )
+
+
+@dataclass(frozen=True)
+class FiatCurrency:
+    """ISO 4217 fiat currency referenced by markets."""
+
+    code: str = ""
+    name: str = ""
+    symbol: Optional[str] = None
+    enabled: bool = True
+
+    @classmethod
+    def from_dict(cls, data: dict) -> FiatCurrency:
+        return cls(
+            code=data.get("code", ""),
+            name=data.get("name", ""),
+            symbol=data.get("symbol"),
+            enabled=bool(data.get("enabled", True)),
+        )
+
+
+@dataclass(frozen=True)
+class Pagination:
+    """Pagination metadata returned alongside paginated list responses."""
+
+    total: int = 0
+    page: int = 1
+    limit: int = 20
+    pages: int = 0
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Pagination:
+        return cls(
+            total=int(data.get("total", 0)),
+            page=int(data.get("page", 1)),
+            limit=int(data.get("limit", 20)),
+            pages=int(data.get("pages", 0)),
+        )
+
+
+@dataclass(frozen=True)
+class TokenListResponse:
+    data: tuple[Token, ...] = ()
+    pagination: Pagination = Pagination()
+
+    @classmethod
+    def from_dict(cls, data: dict) -> TokenListResponse:
+        return cls(
+            data=tuple(Token.from_dict(t) for t in data.get("data", [])),
+            pagination=Pagination.from_dict(data.get("pagination", {})),
+        )
+
+
+@dataclass(frozen=True)
+class FiatCurrencyListResponse:
+    data: tuple[FiatCurrency, ...] = ()
+    pagination: Pagination = Pagination()
+
+    @classmethod
+    def from_dict(cls, data: dict) -> FiatCurrencyListResponse:
+        return cls(
+            data=tuple(FiatCurrency.from_dict(f) for f in data.get("data", [])),
+            pagination=Pagination.from_dict(data.get("pagination", {})),
         )
 
 

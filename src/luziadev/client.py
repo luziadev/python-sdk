@@ -12,9 +12,11 @@ from luziadev.errors import (
 )
 from luziadev.models import RateLimitInfo
 from luziadev.resources.exchanges import ExchangesResource
+from luziadev.resources.fiat_currencies import FiatCurrenciesResource
 from luziadev.resources.history import HistoryResource
 from luziadev.resources.markets import MarketsResource
 from luziadev.resources.tickers import TickersResource
+from luziadev.resources.tokens import TokensResource
 from luziadev.retry import RetryOptions, with_retry
 
 
@@ -54,6 +56,8 @@ class Luzia:
         self.tickers = TickersResource(self)
         self.markets = MarketsResource(self)
         self.history = HistoryResource(self)
+        self.tokens = TokensResource(self)
+        self.fiat_currencies = FiatCurrenciesResource(self)
 
     @property
     def rate_limit_info(self) -> Optional[RateLimitInfo]:
