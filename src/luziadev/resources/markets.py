@@ -8,8 +8,10 @@ if TYPE_CHECKING:
     from luziadev.client import Luzia
 
 
-# Valid market types. `stock` covers tokenized equities (Kraken xStocks).
-MarketType = Literal["spot", "futures", "margin", "stock"]
+# Valid market types.
+# - "stock" covers tokenized equities (Kraken xStocks).
+# - "dex" covers decentralized-exchange pools (Uniswap V3/V4, Raydium, ...).
+MarketType = Literal["spot", "futures", "margin", "stock", "dex"]
 
 
 def _has_mixed_case(value: str) -> bool:

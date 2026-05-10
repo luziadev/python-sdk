@@ -2,7 +2,7 @@ import pytest
 import httpx
 import respx
 
-from luziadev import Luzia, Exchange, Ticker, Market, OHLCVCandle
+from luziadev import Luzia, Exchange, Ticker, Market, OHLCVCandle, Token
 
 
 MOCK_EXCHANGE = {
@@ -191,6 +191,99 @@ async def test_markets_list_xstocks():
     request_url = str(route.calls[0].request.url)
     assert "base=AAPLx" in request_url
     assert "type=stock" in request_url
+
+
+MOCK_DEX_EXCHANGE = {
+    "id": "raydium-solana",
+    "name": "Raydium (Solana)",
+    "status": "operational",
+    "websiteUrl": "https://raydium.io",
+    "type": "dex",
+    "chainId": "solana",
+    "dexId": "raydium",
+}
+
+MOCK_DEX_MARKET = {
+    "symbol": "TSLAx/USDC",
+    "exchange": "raydium-solana",
+    "base": "TSLAx",
+    "quote": "USDC",
+    "active": True,
+    "type": "dex",
+    "chainId": "solana",
+    "poolAddress": "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg",
+    "poolType": "clmm",
+    "baseToken": {
+        "address": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+        "symbol": "TSLAx",
+        "decimals": 8,
+        "chainId": "solana",
+    },
+    "quoteToken": {
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "symbol": "USDC",
+        "decimals": 6,
+        "chainId": "solana",
+    },
+}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_exchanges_list_dex_filter():
+    """Passing type='dex' forwards the query parameter and parses DEX fields."""
+    route = respx.get("https://api.luzia.dev/v1/exchanges").mock(
+        return_value=httpx.Response(200, json={"exchanges": [MOCK_DEX_EXCHANGE]})
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        exchanges = await client.exchanges.list(type="dex")
+
+    assert len(exchanges) == 1
+    ex = exchanges[0]
+    assert isinstance(ex, Exchange)
+    assert ex.id == "raydium-solana"
+    assert ex.type == "dex"
+    assert ex.chain_id == "solana"
+    assert ex.dex_id == "raydium"
+
+    request_url = str(route.calls[0].request.url)
+    assert "type=dex" in request_url
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_markets_list_dex():
+    """DEX markets expose pool/chain metadata and parsed Token objects."""
+    respx.get("https://api.luzia.dev/v1/markets/raydium-solana").mock(
+        return_value=httpx.Response(200, json={
+            "markets": [MOCK_DEX_MARKET],
+            "total": 1,
+            "limit": 100,
+            "offset": 0,
+        })
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        result = await client.markets.list("raydium-solana")
+
+    assert len(result.markets) == 1
+    market = result.markets[0]
+    assert isinstance(market, Market)
+    assert market.symbol == "TSLAx/USDC"
+    assert market.type == "dex"
+    assert market.chain_id == "solana"
+    assert market.pool_address == "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg"
+    assert market.pool_type == "clmm"
+
+    assert isinstance(market.base_token, Token)
+    assert market.base_token.symbol == "TSLAx"
+    assert market.base_token.decimals == 8
+    assert market.base_token.chain_id == "solana"
+
+    assert isinstance(market.quote_token, Token)
+    assert market.quote_token.address == "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    assert market.quote_token.symbol == "USDC"
 
 
 @respx.mock

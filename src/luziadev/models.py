@@ -10,6 +10,15 @@ class Exchange:
     name: Optional[str] = None
     status: Optional[str] = None
     website_url: Optional[str] = None
+    # Exchange kind: "cex" for centralized exchanges, "dex" for decentralized
+    # exchanges (Uniswap V3/V4, Raydium, ...). May be ``None`` on legacy responses.
+    type: Optional[str] = None
+    # Blockchain identifier hosting this DEX (e.g. ``"solana"``, ``"ethereum"``).
+    # ``None`` for CEX exchanges.
+    chain_id: Optional[str] = None
+    # DexScreener ``dexId`` value identifying the underlying protocol
+    # (e.g. ``"raydium"``, ``"uniswapv3"``, ``"uniswapv4"``). ``None`` for CEX.
+    dex_id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> Exchange:
@@ -18,6 +27,9 @@ class Exchange:
             name=data.get("name"),
             status=data.get("status"),
             website_url=data.get("websiteUrl"),
+            type=data.get("type"),
+            chain_id=data.get("chainId"),
+            dex_id=data.get("dexId"),
         )
 
 
@@ -59,6 +71,25 @@ class Ticker:
 
 
 @dataclass(frozen=True)
+class Token:
+    """On-chain token referenced by a DEX market."""
+
+    address: str = ""
+    symbol: str = ""
+    decimals: int = 0
+    chain_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Token:
+        return cls(
+            address=data.get("address", ""),
+            symbol=data.get("symbol", ""),
+            decimals=int(data.get("decimals", 0)),
+            chain_id=data.get("chainId", ""),
+        )
+
+
+@dataclass(frozen=True)
 class Market:
     symbol: str = ""
     exchange: str = ""
@@ -67,15 +98,24 @@ class Market:
     quote: str = ""
     quote_id: str = ""
     active: bool = True
-    # Market classification: "spot" | "futures" | "margin" | "stock".
+    # Market classification: "spot" | "futures" | "margin" | "stock" | "dex".
     # "stock" indicates a tokenized equity (e.g. Kraken xStocks like AAPLx/USD).
+    # "dex" indicates an on-chain DEX pool (Uniswap, Raydium, ...).
     # `None` is treated as "spot" for back-compat.
     type: Optional[str] = None
     precision: Optional[dict] = None
     limits: Optional[dict] = None
+    # DEX-only fields. `None` for CEX markets.
+    chain_id: Optional[str] = None
+    pool_address: Optional[str] = None
+    pool_type: Optional[str] = None
+    base_token: Optional[Token] = None
+    quote_token: Optional[Token] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> Market:
+        base_token_raw = data.get("baseToken")
+        quote_token_raw = data.get("quoteToken")
         return cls(
             symbol=data.get("symbol", ""),
             exchange=data.get("exchange", ""),
@@ -87,6 +127,11 @@ class Market:
             type=data.get("type"),
             precision=data.get("precision"),
             limits=data.get("limits"),
+            chain_id=data.get("chainId"),
+            pool_address=data.get("poolAddress"),
+            pool_type=data.get("poolType"),
+            base_token=Token.from_dict(base_token_raw) if base_token_raw else None,
+            quote_token=Token.from_dict(quote_token_raw) if quote_token_raw else None,
         )
 
 

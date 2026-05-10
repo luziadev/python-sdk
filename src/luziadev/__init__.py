@@ -14,19 +14,24 @@ from luziadev.models import (
     RateLimitInfo,
     Ticker,
     TickerListResponse,
+    Token,
 )
+from luziadev.resources.exchanges import ExchangeType
+from luziadev.resources.markets import MarketType
 from luziadev.retry import RetryContext, RetryOptions
 from luziadev.websocket import LuziaWebSocket
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 
 __all__ = [
     "Luzia",
     "LuziaError",
     "LuziaWebSocket",
     "Exchange",
+    "ExchangeType",
     "Ticker",
     "Market",
+    "MarketType",
     "OHLCVCandle",
     "OHLCVResponse",
     "TickerListResponse",
@@ -34,6 +39,7 @@ __all__ = [
     "RateLimitInfo",
     "RetryOptions",
     "RetryContext",
+    "Token",
     "ErrorCode",
     "is_luzia_error",
     "is_retryable_error",
