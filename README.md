@@ -56,6 +56,49 @@ async def main():
 asyncio.run(main())
 ```
 
+## Tokens, Fiat Currencies & DEX
+
+List on-chain tokens and the ISO 4217 fiat currencies referenced by markets, and
+filter exchanges by decentralized-exchange (DEX) support.
+
+```python
+import asyncio
+from luziadev import Luzia
+
+async def main():
+    async with Luzia("lz_your_api_key") as client:
+        # Tokens — canonical assets ("crypto:USDC") or on-chain instances
+        # ("solana:USDC"). Supports search, chain_id, has_chain, and pagination.
+        tokens = await client.tokens.list(search="USDC", limit=20)
+        for token in tokens.data:
+            print(f"{token.id}: {token.symbol} (chain={token.chain_id})")
+
+        usdc = await client.tokens.get("crypto:USDC")
+        print(usdc.name, usdc.decimals)
+
+        # Fiat currencies — USD, EUR, GBP, ...
+        # Stablecoins (USDC, USDT) are tokens, not fiat — use client.tokens.
+        fiat = await client.fiat_currencies.list(search="dollar")
+        for currency in fiat.data:
+            print(f"{currency.code}: {currency.name}")
+
+        usd = await client.fiat_currencies.get("USD")
+        print(usd.symbol)
+
+        # DEX — filter exchanges by kind ("cex" or "dex").
+        dexes = await client.exchanges.list(type="dex")
+        for ex in dexes:
+            print(f"{ex.id}: chain={ex.chain_id} dex={ex.dex_id}")
+
+        # DEX markets carry on-chain metadata: chain_id, pool_address,
+        # pool_type, base_token, quote_token.
+        pools = await client.markets.list("raydium-solana")
+        for market in pools.markets:
+            print(f"{market.symbol}: pool={market.pool_address}")
+
+asyncio.run(main())
+```
+
 ## WebSocket Streaming
 
 ```python

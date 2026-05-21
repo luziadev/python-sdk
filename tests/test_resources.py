@@ -2,7 +2,15 @@ import pytest
 import httpx
 import respx
 
-from luziadev import Luzia, Exchange, Ticker, Market, OHLCVCandle, Token
+from luziadev import (
+    Exchange,
+    FiatCurrency,
+    Luzia,
+    Market,
+    OHLCVCandle,
+    Ticker,
+    Token,
+)
 
 
 MOCK_EXCHANGE = {
@@ -26,7 +34,7 @@ MOCK_TICKER = {
     "quoteVolume": 534123456.78,
     "change": 750.50,
     "changePercent": 1.76,
-    "timestamp": "2024-01-01T00:00:00.000Z",
+    "timestamp": 1704067200000,
 }
 
 MOCK_MARKET = {
@@ -42,7 +50,7 @@ MOCK_MARKET = {
 }
 
 MOCK_CANDLE = {
-    "timestamp": "2024-01-01T00:00:00.000Z",
+    "timestamp": 1704067200000,
     "open": 43000.0,
     "high": 43500.0,
     "low": 42800.0,
@@ -296,8 +304,8 @@ async def test_history_get():
             "interval": "1h",
             "candles": [MOCK_CANDLE],
             "count": 1,
-            "start": "2024-01-01T00:00:00.000Z",
-            "end": "2024-01-01T01:00:00.000Z",
+            "start": 1704067200000,
+            "end": 1704070800000,
         })
     )
 
@@ -315,3 +323,116 @@ async def test_history_get():
         assert candle.open == 43000.0
         assert candle.trades == 342
         assert candle.quote_volume == 5345678.9
+
+
+MOCK_TOKEN = {
+    "id": "crypto:USDC",
+    "symbol": "USDC",
+    "name": "USD Coin",
+    "decimals": 6,
+    "address": None,
+    "chainId": None,
+    "totalSupply": None,
+    "logoUrl": None,
+    "tags": ["stablecoin"],
+    "canonicalId": None,
+}
+
+MOCK_FIAT = {
+    "code": "USD",
+    "name": "United States Dollar",
+    "symbol": "$",
+    "enabled": True,
+}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_tokens_list():
+    """tokens.list parses data + pagination and forwards filter query params."""
+    route = respx.get("https://api.luzia.dev/v1/tokens").mock(
+        return_value=httpx.Response(200, json={
+            "data": [MOCK_TOKEN],
+            "pagination": {"total": 1, "page": 1, "limit": 20, "pages": 1},
+        })
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        result = await client.tokens.list(
+            search="USDC", chain_id="solana", has_chain=True, page=1, limit=20
+        )
+
+    assert len(result.data) == 1
+    token = result.data[0]
+    assert isinstance(token, Token)
+    assert token.id == "crypto:USDC"
+    assert token.symbol == "USDC"
+    assert token.tags == ("stablecoin",)
+    assert result.pagination.total == 1
+
+    request_url = str(route.calls[0].request.url)
+    assert "search=USDC" in request_url
+    assert "chainId=solana" in request_url
+    assert "hasChain=true" in request_url
+    assert "limit=20" in request_url
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_tokens_get():
+    """tokens.get URL-encodes the composite id and unwraps the data envelope."""
+    route = respx.get(url__startswith="https://api.luzia.dev/v1/tokens/").mock(
+        return_value=httpx.Response(200, json={"data": MOCK_TOKEN})
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        token = await client.tokens.get("crypto:USDC")
+
+    assert isinstance(token, Token)
+    assert token.id == "crypto:USDC"
+    assert token.decimals == 6
+    # The colon must be percent-encoded in the path segment.
+    assert "crypto%3AUSDC" in str(route.calls[0].request.url)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_fiat_currencies_list():
+    """fiat_currencies.list parses data + pagination and maps the enabled filter."""
+    route = respx.get("https://api.luzia.dev/v1/fiat-currencies").mock(
+        return_value=httpx.Response(200, json={
+            "data": [MOCK_FIAT],
+            "pagination": {"total": 38, "page": 1, "limit": 50, "pages": 1},
+        })
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        result = await client.fiat_currencies.list(search="dollar", enabled="all")
+
+    assert len(result.data) == 1
+    currency = result.data[0]
+    assert isinstance(currency, FiatCurrency)
+    assert currency.code == "USD"
+    assert currency.name == "United States Dollar"
+    assert result.pagination.total == 38
+
+    request_url = str(route.calls[0].request.url)
+    assert "search=dollar" in request_url
+    assert "enabled=all" in request_url
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_fiat_currencies_get():
+    """fiat_currencies.get upper-cases the ISO code and unwraps the data envelope."""
+    route = respx.get("https://api.luzia.dev/v1/fiat-currencies/USD").mock(
+        return_value=httpx.Response(200, json={"data": MOCK_FIAT})
+    )
+
+    async with Luzia("lz_test_key_12345678901234567890") as client:
+        currency = await client.fiat_currencies.get("usd")
+
+    assert isinstance(currency, FiatCurrency)
+    assert currency.code == "USD"
+    assert currency.symbol == "$"
+    assert "/v1/fiat-currencies/USD" in str(route.calls[0].request.url)

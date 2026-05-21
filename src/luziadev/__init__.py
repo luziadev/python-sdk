@@ -26,7 +26,7 @@ from luziadev.resources.markets import MarketType
 from luziadev.retry import RetryContext, RetryOptions
 from luziadev.websocket import LuziaWebSocket
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 __all__ = [
     "Luzia",

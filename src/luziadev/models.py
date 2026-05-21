@@ -48,7 +48,8 @@ class Ticker:
     quote_volume: Optional[float] = None
     change: Optional[float] = None
     change_percent: Optional[float] = None
-    timestamp: Optional[str] = None
+    # Observation time as a Unix timestamp in milliseconds.
+    timestamp: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> Ticker:
@@ -222,7 +223,8 @@ class Market:
 
 @dataclass(frozen=True)
 class OHLCVCandle:
-    timestamp: Optional[str] = None
+    # Candle open time as a Unix timestamp in milliseconds.
+    timestamp: Optional[int] = None
     open: Optional[float] = None
     high: Optional[float] = None
     low: Optional[float] = None
@@ -296,8 +298,9 @@ class OHLCVResponse:
     interval: Optional[str] = None
     candles: list[OHLCVCandle] | None = None
     count: Optional[int] = None
-    start: Optional[str] = None
-    end: Optional[str] = None
+    # Requested range bounds as Unix timestamps in milliseconds.
+    start: Optional[int] = None
+    end: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> OHLCVResponse:
